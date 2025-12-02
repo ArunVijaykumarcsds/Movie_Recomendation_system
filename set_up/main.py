@@ -60,7 +60,7 @@ def stem(text):
 
 
 # -------------------------------------------------------------------
-# Load + process data (CSV in SAME folder)
+# Load + process data (CSV in SAME folder as main.py)
 # -------------------------------------------------------------------
 @st.cache_resource(show_spinner=True)
 def load_and_process_data():
@@ -73,8 +73,7 @@ def load_and_process_data():
     if not os.path.exists(credits_path) or not os.path.exists(movies_path):
         st.error(
             "❌ Could not find `credits.csv` or `movies.csv`.\n\n"
-            "Since you said both CSVs are in the same folder as main.py, "
-            "make sure the folder contains exactly:\n\n"
+            "Make sure this folder contains exactly:\n\n"
             "- main.py\n"
             "- credits.csv\n"
             "- movies.csv\n"
@@ -95,13 +94,17 @@ def load_and_process_data():
     movies["overview"] = movies["overview"].apply(lambda x: x.split())
 
     movies["genres"] = movies["genres"].apply(
-        lambda x: [i.replace(" ", "") for i in x])
+        lambda x: [i.replace(" ", "") for i in x]
+    )
     movies["keywords"] = movies["keywords"].apply(
-        lambda x: [i.replace(" ", "") for i in x])
+        lambda x: [i.replace(" ", "") for i in x]
+    )
     movies["cast"] = movies["cast"].apply(
-        lambda x: [i.replace(" ", "") for i in x])
+        lambda x: [i.replace(" ", "") for i in x]
+    )
     movies["crew"] = movies["crew"].apply(
-        lambda x: [i.replace(" ", "") for i in x])
+        lambda x: [i.replace(" ", "") for i in x]
+    )
 
     movies["tags"] = (
         movies["overview"]
@@ -138,7 +141,7 @@ def recommend(movie_title, new_df, similarity, n=5):
     movies_list = sorted(
         list(enumerate(distances)),
         reverse=True,
-        key=lambda x: x[1]
+        key=lambda x: x[1],
     )[1 : n + 1]
 
     return [new_df.iloc[i[0]].title for i in movies_list]
@@ -149,6 +152,23 @@ def recommend(movie_title, new_df, similarity, n=5):
 # -------------------------------------------------------------------
 def main():
     st.title("🎬 Movie Recommendation System")
+
+    # --- Header image (your TechVidvan-style banner) ---
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    banner_path = os.path.join(base_dir, "tv_banner.jpg")  # <- your downloaded image
+
+    if os.path.exists(banner_path):
+        st.image(
+            banner_path,
+            caption="Movie Recommendation System",
+            use_column_width=True,
+        )
+    else:
+        st.info(
+            "ℹ️ Place your banner image as `tv_banner.jpg` in the same folder as `main.py` "
+            "to display it here."
+        )
+
     st.write("Select a movie, and I’ll suggest similar movies.")
 
     with st.spinner("Loading data…"):
@@ -159,9 +179,12 @@ def main():
 
     if st.button("🔍 Get Recommendations"):
         recs = recommend(selected_movie, new_df, similarity)
-        st.subheader(f"Because you watched **{selected_movie}**, you may also like:")
-        for i, r in enumerate(recs, 1):
-            st.write(f"{i}. **{r}**")
+        if not recs:
+            st.error("No recommendations found.")
+        else:
+            st.subheader(f"Because you watched **{selected_movie}**, you may also like:")
+            for i, r in enumerate(recs, 1):
+                st.write(f"{i}. **{r}**")
 
 
 if __name__ == "__main__":
