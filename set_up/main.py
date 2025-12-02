@@ -65,7 +65,6 @@ def stem(text):
 @st.cache_resource(show_spinner=True)
 def load_and_process_data():
 
-    # CSVs are in SAME folder as main.py
     base_dir = os.path.dirname(os.path.abspath(__file__))
     credits_path = os.path.join(base_dir, "credits.csv")
     movies_path = os.path.join(base_dir, "movies.csv")
@@ -153,16 +152,20 @@ def recommend(movie_title, new_df, similarity, n=5):
 def main():
     st.title("🎬 Movie Recommendation System")
 
-    # --- Header image from URL (no local file, no PIL issues) ---
-    banner_url = (
-        "https://techvidvan.com/wp-content/uploads/2020/04/"
-        "Movie-Recommendation-System-using-Machine-Learning.jpg"
-    )
-    st.image(
-        banner_url,
-        caption="Movie Recommendation System",
-        use_column_width=True,
-    )
+    # --- Local header image (banner.jpg in same folder) ---
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    banner_path = os.path.join(base_dir, "banner.jpg")
+
+    if os.path.exists(banner_path):
+        st.image(
+            banner_path,
+            caption="Movie Recommendation System",
+            use_column_width=True,
+        )
+    else:
+        st.info(
+            "ℹ️ Add an image named `banner.jpg` in this folder to display a header banner."
+        )
 
     st.write("Select a movie, and I’ll suggest similar movies based on content similarity.")
 
