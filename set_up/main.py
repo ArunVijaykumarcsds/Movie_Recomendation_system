@@ -68,40 +68,72 @@ def stem(text):
 # Data load + preprocessing (cached so Streamlit doesn't redo every run)
 # -------------------------------------------------------------------
 @st.cache_resource(show_spinner=True)
-def load_and_process_data():
-    # Read CSVs
-    credits = pd.read_csv(
-        "credits.csv",
-        encoding="latin1",
-        encoding_errors="ignore",  # works in newer pandas
+import os
+import pandas as pd
+import streamlit as st
+import ast
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer, ENGLISH_STOP_WORDS
+from sklearn.metrics.pairwise import cosine_similarity
+
+# -------------------------------------------------------------------
+# simple stemmer (no NLTK)
+# -------------------------------------------------------------------
+def stem(text):
+    return " ".join(
+        word.lower() for word in text.split() if word.lower() not in ENGLISH_STOP_WORDS
     )
-    movies = pd.read_csv("movies.csv")
 
-    # Merge on title
+# your other helper functions: convert, convert_top3_cast, fetch_director stay the same
+
+
+@st.cache_resource(show_spinner=True)
+def load_and_process_data():
+    # 👇 Base directory of this file (…/movie_recomendation_system/set_up)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # 👇 Assume CSVs are in the repo root one level up: …/movie_recomendation_system
+    data_dir = os.path.abspath(os.path.join(base_dir, ".."))
+
+    credits_path = os.path.join(data_dir, "credits.csv")
+    movies_path = os.path.join(data_dir, "movies.csv")
+
+    # Safety check: show a nice error if files are missing
+    if not os.path.exists(credits_path) or not os.path.exists(movies_path):
+        st.error(
+            "❌ Could not find `credits.csv` or `movies.csv`.\n\n"
+            "I looked in:\n"
+            f"- {credits_path}\n"
+            f"- {movies_path}\n\n"
+            "✅ Fix:\n"
+            "- Either move the CSV files to that location, OR\n"
+            "- Update `credits_path` and `movies_path` in `load_and_process_data()` "
+            "to point wherever your files actually are."
+        )
+        st.stop()
+
+    # 👇 Removed `encoding_errors` so it works with all pandas versions
+    credits = pd.read_csv(credits_path, encoding="latin1")
+    movies = pd.read_csv(movies_path)
+
+    # --- your existing preprocessing logic from before ---
+
     movies = movies.merge(credits, on="title")
-
-    # Keep relevant columns
     movies = movies[["genres", "id", "keywords", "title", "overview", "cast", "crew"]]
-
-    # Drop nulls
     movies.dropna(inplace=True)
 
-    # Convert JSON-like strings to Python lists
     movies["genres"] = movies["genres"].apply(convert)
     movies["keywords"] = movies["keywords"].apply(convert)
     movies["cast"] = movies["cast"].apply(convert_top3_cast)
     movies["crew"] = movies["crew"].apply(fetch_director)
 
-    # Tokenize overview
     movies["overview"] = movies["overview"].apply(lambda x: x.split())
 
-    # Remove spaces inside multi-word tokens
     movies["genres"] = movies["genres"].apply(lambda x: [i.replace(" ", "") for i in x])
     movies["keywords"] = movies["keywords"].apply(lambda x: [i.replace(" ", "") for i in x])
     movies["cast"] = movies["cast"].apply(lambda x: [i.replace(" ", "") for i in x])
     movies["crew"] = movies["crew"].apply(lambda x: [i.replace(" ", "") for i in x])
 
-    # Create tags
     movies["tags"] = (
         movies["overview"]
         + movies["genres"]
@@ -115,11 +147,9 @@ def load_and_process_data():
     new_df["tags"] = new_df["tags"].apply(lambda x: x.lower())
     new_df["tags"] = new_df["tags"].apply(stem)
 
-    # Vectorization
     cv = CountVectorizer(max_features=5000, stop_words="english")
     vectors = cv.fit_transform(new_df["tags"]).toarray()
 
-    # Cosine similarity matrix
     similarity = cosine_similarity(vectors)
 
     return new_df, similarity
